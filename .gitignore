@@ -33,3 +33,7 @@ outputs/
 # Operating system
 .DS_Store
 Thumbs.db
+# Local parking detection test files
+parking_test.jpg
+parking_test_result.jpg
+test_real_image.py
