@@ -1,0 +1,35 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# AI model files
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Uploaded images and generated results
+uploads/
+outputs/
+
+# Logs
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
