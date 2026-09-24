@@ -75,9 +75,17 @@ class RTDETRDetector(Detector):
             results["labels"],
             results["boxes"],
         ):
+            label_id = int(label.item())
+
+            class_name = self.model.config.id2label.get(
+                label_id,
+                str(label_id),
+            )
+
             detections.append(
                 {
-                    "label": int(label.item()),
+                    "label": label_id,
+                    "class_name": class_name,
                     "score": float(score.item()),
                     "box": [
                         float(coordinate.item())
