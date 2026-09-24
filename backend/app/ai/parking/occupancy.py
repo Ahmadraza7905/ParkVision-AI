@@ -1,5 +1,8 @@
 ﻿from typing import Any
 
+import cv2
+import numpy as np
+
 from .space import ParkingSpace
 
 
@@ -7,37 +10,53 @@ def calculate_box_overlap(
     box: list[float],
     polygon: tuple[tuple[float, float], ...],
 ) -> float:
-    """Calculate the fraction of a detection box covered by a parking-space polygon."""
+    """Calculate the fraction of a detection box inside a parking polygon."""
 
     box_x1, box_y1, box_x2, box_y2 = box
 
-    polygon_x1 = min(point[0] for point in polygon)
-    polygon_y1 = min(point[1] for point in polygon)
-    polygon_x2 = max(point[0] for point in polygon)
-    polygon_y2 = max(point[1] for point in polygon)
-
-    intersection_x1 = max(box_x1, polygon_x1)
-    intersection_y1 = max(box_y1, polygon_y1)
-    intersection_x2 = min(box_x2, polygon_x2)
-    intersection_y2 = min(box_y2, polygon_y2)
-
-    if intersection_x2 <= intersection_x1:
+    if box_x2 <= box_x1 or box_y2 <= box_y1:
         return 0.0
 
-    if intersection_y2 <= intersection_y1:
-        return 0.0
-
-    intersection_area = (
-        (intersection_x2 - intersection_x1)
-        * (intersection_y2 - intersection_y1)
+    polygon_array = np.array(
+        polygon,
+        dtype=np.int32,
     )
 
-    box_area = (box_x2 - box_x1) * (box_y2 - box_y1)
+    mask = np.zeros(
+        (
+            int(max(box_y2, polygon_array[:, 1].max())) + 1,
+            int(max(box_x2, polygon_array[:, 0].max())) + 1,
+        ),
+        dtype=np.uint8,
+    )
 
-    if box_area <= 0:
+    cv2.fillPoly(
+        mask,
+        [polygon_array],
+        1,
+    )
+
+    box_mask = np.zeros_like(mask)
+
+    cv2.rectangle(
+        box_mask,
+        (int(box_x1), int(box_y1)),
+        (int(box_x2), int(box_y2)),
+        1,
+        -1,
+    )
+
+    intersection_area = np.logical_and(
+        mask,
+        box_mask,
+    ).sum()
+
+    box_area = np.count_nonzero(box_mask)
+
+    if box_area == 0:
         return 0.0
 
-    return intersection_area / box_area
+    return float(intersection_area / box_area)
 
 
 def is_space_occupied(
