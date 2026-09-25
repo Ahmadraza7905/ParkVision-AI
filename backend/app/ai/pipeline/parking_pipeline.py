@@ -51,10 +51,12 @@ class ParkingPipeline:
             if space["occupied"]
         )
 
+        total_spaces = len(spaces)
+
         return {
             "spaces": spaces,
-            "total_spaces": len(spaces),
+            "total_spaces": total_spaces,
             "occupied_spaces": occupied_count,
-            "available_spaces": len(spaces) - occupied_count,
+            "available_spaces": total_spaces - occupied_count,
             "vehicles_detected": len(vehicles),
         }
