@@ -37,3 +37,12 @@ Thumbs.db
 parking_test.jpg
 parking_test_result.jpg
 test_real_image.py
+# Local parking development tools and test artifacts
+annotate_parking.py
+parking_occupancy_result.jpg
+parking_spaces.json
+parking_spaces_validation.jpg
+test_parking_occupancy.py
+test_pipeline_real.py
+validate_parking_spaces.py
+validate_parking_visual.py
