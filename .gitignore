@@ -1,4 +1,4 @@
-# Python virtual environment
+﻿# Python virtual environment
 .venv/
 venv/
 
@@ -46,3 +46,17 @@ test_parking_occupancy.py
 test_pipeline_real.py
 validate_parking_spaces.py
 validate_parking_visual.py
+
+# Local AI datasets, model checkpoints, and training runs
+datasets/
+runs/
+backend/app/ai/models/
+
+
+# Local frontend backups
+frontend/index_backup_*.html
+
+# Local generated test artifacts
+parking_ai_result.jpg
+parking_ai_result_clean.jpg
+parking_ground_truth.json

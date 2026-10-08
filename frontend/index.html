@@ -1,0 +1,805 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkVision AI â€” Intelligent Parking Analytics</title>
+  <meta name="description" content="Premium AI-powered parking occupancy dashboard." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#070b12; --panel:#0d1420; --panel2:#111a28; --line:rgba(148,163,184,.16);
+      --text:#f5f7fb; --muted:#8490a5; --green:#31e6a0; --red:#ff5573; --blue:#67a8ff;
+      --shadow:0 24px 80px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:radial-gradient(circle at 18% 0%,#122035 0,#080d16 38%,#05080e 100%);color:var(--text);font-family:Inter,system-ui,sans-serif}
+    body{overflow-x:hidden}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .orb{position:fixed;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.12;pointer-events:none;z-index:0}
+    .orb.a{background:#2d8cff;left:-180px;top:-160px}.orb.b{background:#00e6a0;right:-220px;top:40%}
+    .app{position:relative;z-index:1;max-width:1600px;margin:auto;padding:24px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+    .brand{display:flex;gap:13px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#2de6a0,#287dff);box-shadow:0 12px 35px rgba(49,230,160,.18);display:grid;place-items:center;font-weight:800}
+    .brand h1{font-size:17px;margin:0}.brand p{font-size:12px;color:var(--muted);margin:4px 0 0}
+    .top-actions{display:flex;gap:10px;align-items:center}
+    .pill,.btn{border:1px solid var(--line);background:rgba(14,20,31,.78);color:var(--text);border-radius:12px;padding:10px 14px}
+    .pill{font-size:12px}.status{display:flex;align-items:center;gap:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}
+    .btn.primary{background:linear-gradient(135deg,#27d99a,#1ba978);border:0;font-weight:700;box-shadow:0 12px 28px rgba(31,211,151,.15)}
+    .grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(360px,.85fr);gap:20px}
+    .card{background:linear-gradient(180deg,rgba(16,24,37,.92),rgba(9,14,23,.92));border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;transform-style:preserve-3d}
+    .card-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--line)}
+    .card-title{font-size:16px;font-weight:700}.sub{font-size:12px;color:var(--muted);margin-top:5px}
+    .viewer{padding:22px}
+    .dropzone{position:relative;min-height:620px;border:1px dashed rgba(148,163,184,.24);border-radius:22px;padding:22px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0%,rgba(74,132,255,.08),transparent 45%),rgba(5,9,15,.4);transition:.25s}
+    .dropzone.drag{border-color:var(--green);box-shadow:inset 0 0 60px rgba(49,230,160,.07)}
+    .preview{width:100%;height:100%;min-height:576px;object-fit:contain;border-radius:17px;display:none;background:#05080d}
+    .preview.show{display:block}
+    /* =========================================================
+       PARKING DETECTION OVERLAY
+       ========================================================= */
+
+    .image-stage{
+      position:relative;
+      width:100%;
+      display:none;
+      overflow:hidden;
+      border-radius:17px;
+      background:#05080d;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,.30),
+        inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .image-stage.show{
+      display:block;
+    }
+
+    .image-stage .preview{
+      width:100%;
+      height:auto;
+      min-height:0;
+      display:block;
+      object-fit:contain;
+      border-radius:17px;
+      background:#05080d;
+    }
+
+    .parking-overlay{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      border-radius:17px;
+    }
+
+    .parking-box{
+      position:absolute;
+      box-sizing:border-box;
+      border:2px solid;
+      border-radius:7px;
+      transform-origin:center;
+      transition:
+        left .35s ease,
+        top .35s ease,
+        width .35s ease,
+        height .35s ease,
+        opacity .35s ease,
+        transform .25s ease;
+      animation:parkingBoxIn .45s ease both;
+    }
+
+    .parking-box.empty{
+      border-color:#31e6a0;
+      background:rgba(49,230,160,.16);
+      box-shadow:
+        0 0 0 1px rgba(49,230,160,.18),
+        0 0 18px rgba(49,230,160,.28),
+        inset 0 0 22px rgba(49,230,160,.08);
+    }
+
+    .parking-box.occupied{
+      border-color:#ff5573;
+      background:rgba(255,85,115,.18);
+      box-shadow:
+        0 0 0 1px rgba(255,85,115,.18),
+        0 0 18px rgba(255,85,115,.28),
+        inset 0 0 22px rgba(255,85,115,.08);
+    }
+
+    .parking-box:hover{
+      transform:scale(1.025);
+    }
+
+    .parking-label{
+      position:absolute;
+      left:3px;
+      top:3px;
+      display:flex;
+      align-items:center;
+      gap:5px;
+      padding:4px 7px;
+      border-radius:6px;
+      color:white;
+      background:rgba(5,8,13,.86);
+      border:1px solid rgba(255,255,255,.14);
+      backdrop-filter:blur(12px);
+      box-shadow:0 5px 15px rgba(0,0,0,.25);
+      font-size:9px;
+      line-height:1;
+      font-weight:800;
+      letter-spacing:.04em;
+      white-space:nowrap;
+    }
+
+    .parking-box.empty .parking-label{
+      color:#7affc4;
+    }
+
+    .parking-box.occupied .parking-label{
+      color:#ff8da2;
+    }
+
+    .parking-dot{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      flex:0 0 auto;
+      box-shadow:0 0 8px currentColor;
+    }
+
+    .parking-box.empty .parking-dot{
+      background:#31e6a0;
+    }
+
+    .parking-box.occupied .parking-dot{
+      background:#ff5573;
+    }
+
+    .parking-confidence{
+      position:absolute;
+      right:3px;
+      bottom:3px;
+      padding:3px 5px;
+      border-radius:5px;
+      background:rgba(5,8,13,.78);
+      border:1px solid rgba(255,255,255,.10);
+      color:#e8edf7;
+      font-size:8px;
+      font-weight:700;
+      backdrop-filter:blur(8px);
+    }
+
+    .overlay-summary{
+      position:absolute;
+      right:14px;
+      top:14px;
+      display:flex;
+      gap:7px;
+      padding:7px;
+      border-radius:10px;
+      background:rgba(5,8,13,.78);
+      border:1px solid rgba(255,255,255,.10);
+      backdrop-filter:blur(14px);
+      box-shadow:0 10px 30px rgba(0,0,0,.24);
+      z-index:3;
+    }
+
+    .overlay-summary-item{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      padding:4px 7px;
+      font-size:9px;
+      font-weight:700;
+      color:#b8c2d4;
+    }
+
+    .overlay-summary-item i{
+      width:6px;
+      height:6px;
+      border-radius:50%;
+    }
+
+    .overlay-summary-item.red i{
+      background:#ff5573;
+      box-shadow:0 0 9px #ff5573;
+    }
+
+    .overlay-summary-item.green i{
+      background:#31e6a0;
+      box-shadow:0 0 9px #31e6a0;
+    }
+
+    @keyframes parkingBoxIn{
+      from{
+        opacity:0;
+        transform:scale(.94);
+      }
+      to{
+        opacity:1;
+        transform:scale(1);
+      }
+    }
+
+    @media(max-width:700px){
+      .parking-label{
+        font-size:7px;
+        padding:3px 4px;
+      }
+
+      .parking-confidence{
+        font-size:6px;
+        padding:2px 3px;
+      }
+
+      .parking-box{
+        border-width:1px;
+      }
+
+      .overlay-summary{
+        right:8px;
+        top:8px;
+      }
+    }
+
+    .placeholder{text-align:center;max-width:450px}.upload-icon{width:70px;height:70px;border-radius:20px;margin:0 auto 18px;display:grid;place-items:center;background:rgba(49,230,160,.08);border:1px solid rgba(49,230,160,.18);font-size:30px}
+    .placeholder h2{margin:0 0 9px;font-size:23px}.placeholder p{margin:0 0 20px;color:var(--muted);line-height:1.65;font-size:13px}
+    .file-meta{display:none;position:absolute;left:38px;top:38px;padding:10px 13px;border-radius:12px;background:rgba(5,8,13,.84);backdrop-filter:blur(16px);font-size:12px;border:1px solid var(--line)}
+    .file-meta.show{display:block}
+    .analyzing{display:none;position:absolute;right:38px;top:38px;padding:10px 13px;border-radius:12px;background:rgba(5,8,13,.84);backdrop-filter:blur(16px);font-size:12px;border:1px solid var(--line)}
+    .analyzing.show{display:block}.spin{display:inline-block;width:11px;height:11px;border:2px solid #526075;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin-right:7px}@keyframes spin{to{transform:rotate(360deg)}}
+    .right{display:grid;gap:20px;align-content:start}
+    .occupancy{padding:24px}.occupancy-top{display:flex;justify-content:space-between;align-items:start}.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.04em}.big{font-size:48px;font-weight:800;letter-spacing:-.04em;margin-top:8px}
+    .ring-wrap{display:grid;place-items:center;margin:10px 0 18px}.ring{width:220px;height:220px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0deg 0deg,#18212e 0deg 360deg);position:relative;transition:background 1s ease}.ring:after{content:"";position:absolute;inset:23px;border-radius:50%;background:#090f18;border:1px solid rgba(255,255,255,.035)}.ring-center{position:relative;z-index:2;text-align:center}.ring-value{font-size:35px;font-weight:800}.ring-label{font-size:11px;color:var(--muted);margin-top:3px}.legend{display:flex;justify-content:center;gap:25px;font-size:12px;color:var(--muted)}.legend span{display:flex;align-items:center;gap:7px}.legend i{width:8px;height:8px;border-radius:50%}.legend .r{background:var(--red)}.legend .g{background:var(--green)}
+    .metrics{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric{padding:18px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.025)}.metric .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.metric .v{font-size:28px;font-weight:800;margin-top:9px}.metric.green .v{color:var(--green)}.metric.red .v{color:var(--red)}
+    .activity{padding:22px}.activity-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(148,163,184,.09);font-size:12px}.activity-row:last-child{border-bottom:0}.tag{padding:5px 8px;border-radius:8px;background:rgba(49,230,160,.08);color:var(--green);font-size:10px;font-weight:700}
+    .footer{margin-top:20px;display:flex;justify-content:space-between;gap:15px;color:#667287;font-size:11px}
+    .toast{position:fixed;right:24px;bottom:24px;z-index:5;transform:translateY(130%);transition:.3s;padding:14px 17px;border-radius:14px;background:#101a28;border:1px solid var(--line);box-shadow:var(--shadow);font-size:12px}.toast.show{transform:none}
+    .scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;box-shadow:0 0 22px var(--green)}.scanning .scanline{opacity:.55;animation:scan 1.8s linear infinite}@keyframes scan{from{top:4%}to{top:96%}}
+    @media(max-width:1050px){.grid{grid-template-columns:1fr}.right{grid-template-columns:1fr 1fr}.activity{grid-column:1/-1}}
+    @media(max-width:700px){.app{padding:14px}.right{grid-template-columns:1fr}.top-actions .hide-mobile{display:none}.dropzone{min-height:440px}.preview{min-height:400px}.ring{width:190px;height:190px}}
+
+    /* Interactive parking-space UI */
+    .parking-box{
+      cursor:pointer;
+      transition:
+        transform .16s ease,
+        filter .16s ease,
+        box-shadow .16s ease;
+    }
+
+    .parking-box:hover{
+      transform:scale(1.035);
+      z-index:50;
+      filter:brightness(1.15);
+    }
+
+    .parking-box.selected{
+      z-index:100;
+      transform:scale(1.045);
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,.95),
+        0 0 24px rgba(255,255,255,.35);
+    }
+
+    .parking-label{
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .15s ease;
+    }
+
+    .parking-box:hover .parking-label,
+    .parking-box.selected .parking-label{
+      opacity:1;
+    }
+
+    .parking-hover-card{
+      position:absolute;
+      left:50%;
+      bottom:calc(100% + 8px);
+      transform:translateX(-50%) translateY(4px);
+      min-width:145px;
+      padding:9px 11px;
+      border-radius:10px;
+      background:rgba(8,12,18,.96);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:0 14px 35px rgba(0,0,0,.38);
+      backdrop-filter:blur(14px);
+      color:#fff;
+      opacity:0;
+      pointer-events:none;
+      transition:
+        opacity .16s ease,
+        transform .16s ease;
+      z-index:120;
+    }
+
+    .parking-box:hover .parking-hover-card{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
+    .parking-hover-id{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.04em;
+      margin-bottom:4px;
+    }
+
+    .parking-hover-status{
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.08em;
+      margin-bottom:3px;
+    }
+
+    .parking-hover-confidence{
+      font-size:9px;
+      color:rgba(255,255,255,.62);
+    }
+
+    .parking-box.empty .parking-hover-status{
+      color:#31e6a0;
+    }
+
+    .parking-box.occupied .parking-hover-status{
+      color:#ff5573;
+    }
+
+    .parking-detail-panel{
+      position:absolute;
+      right:14px;
+      bottom:14px;
+      width:210px;
+      padding:15px;
+      border-radius:14px;
+      background:rgba(7,11,17,.94);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 18px 45px rgba(0,0,0,.42);
+      backdrop-filter:blur(18px);
+      z-index:200;
+      color:#fff;
+      display:none;
+    }
+
+    .parking-detail-panel.show{
+      display:block;
+      animation:parkingPanelIn .18s ease;
+    }
+
+    .parking-detail-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .parking-detail-title{
+      font-size:14px;
+      font-weight:900;
+    }
+
+    .parking-detail-close{
+      width:24px;
+      height:24px;
+      border:0;
+      border-radius:7px;
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      cursor:pointer;
+      font-size:15px;
+    }
+
+    .parking-detail-status{
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.08em;
+      margin-bottom:12px;
+    }
+
+    .parking-detail-status.empty{
+      color:#31e6a0;
+    }
+
+    .parking-detail-status.occupied{
+      color:#ff5573;
+    }
+
+    .parking-detail-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+
+    .parking-detail-metric{
+      padding:9px;
+      border-radius:9px;
+      background:rgba(255,255,255,.055);
+      border:1px solid rgba(255,255,255,.07);
+    }
+
+    .parking-detail-metric span{
+      display:block;
+      font-size:8px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:rgba(255,255,255,.48);
+      margin-bottom:4px;
+    }
+
+    .parking-detail-metric strong{
+      font-size:12px;
+    }
+
+    @keyframes parkingPanelIn{
+      from{
+        opacity:0;
+        transform:translateY(8px);
+      }
+      to{
+        opacity:1;
+        transform:translateY(0);
+      }
+    }
+
+    @media(max-width:700px){
+      .parking-detail-panel{
+        right:8px;
+        bottom:8px;
+        width:185px;
+      }
+
+      .parking-hover-card{
+        min-width:120px;
+      }
+    }
+</style>
+</head>
+<body>
+<div class="orb a"></div><div class="orb b"></div>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">P</div>
+      <div><h1>ParkVision AI</h1><p>Intelligent parking occupancy analytics</p></div>
+    </div>
+    <div class="top-actions">
+      <div class="pill status"><span class="dot"></span><span id="backendStatus">AI READY</span></div>
+      <div class="pill hide-mobile">RT-DETR</div>
+      <button class="btn primary" id="sampleBtn">Load sample</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card" data-tilt>
+      <div class="card-head">
+        <div><div class="card-title">Parking Scene Analyzer</div><div class="sub">Upload a parking-lot image and run the trained RT-DETR model.</div></div>
+        <div class="pill" id="resolution">â€” Ã— â€”</div>
+      </div>
+      <div class="viewer">
+        <div class="dropzone" id="dropzone">
+          <div class="scanline"></div>
+          <div class="file-meta" id="fileMeta"></div>
+          <div class="analyzing" id="analyzing"><span class="spin"></span>Running inferenceâ€¦</div>
+          <div class="image-stage" id="imageStage">
+  <img class="preview" id="preview" alt="Parking scene preview">
+  <div class="parking-overlay" id="parkingOverlay"></div>
+</div>
+          <div class="placeholder" id="placeholder">
+            <div class="upload-icon">âŒ</div>
+            <h2>Drop a parking image here</h2>
+            <p>Analyze your own camera frame, aerial image, or parking-lot photo. Results are sent directly to your local ParkVision AI backend.</p>
+            <button class="btn primary" id="chooseBtn">Choose image</button>
+            <input id="fileInput" type="file" accept="image/*" hidden>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <section class="card occupancy" data-tilt>
+        <div class="occupancy-top">
+          <div><div class="eyebrow">CURRENT OCCUPANCY</div><div class="big" id="occupancy">â€”</div></div>
+          <div class="pill" id="readyPill">READY</div>
+        </div>
+        <div class="ring-wrap">
+          <div class="ring" id="ring"><div class="ring-center"><div class="ring-value" id="ringValue">â€”</div><div class="ring-label">OCCUPIED</div></div></div>
+        </div>
+        <div class="legend"><span><i class="r"></i>Occupied</span><span><i class="g"></i>Available</span></div>
+      </section>
+
+      <section class="card metrics">
+        <div class="metric"><div class="k">Total spaces</div><div class="v" id="total">â€”</div></div>
+        <div class="metric green"><div class="k">Available</div><div class="v" id="available">â€”</div></div>
+        <div class="metric red"><div class="k">Occupied</div><div class="v" id="occupied">â€”</div></div>
+        <div class="metric"><div class="k">AI detections</div><div class="v" id="detections">â€”</div></div>
+      </section>
+
+      <section class="card activity">
+        <div class="card-title">AI Activity</div><div class="sub">Latest inference information</div>
+        <div class="activity-row"><span>Model</span><span class="tag">RT-DETR</span></div>
+        <div class="activity-row"><span>Detector status</span><span class="tag" id="activityStatus">Ready</span></div>
+        <div class="activity-row"><span>Confidence</span><span id="confidence">Model default</span></div>
+        <div class="activity-row"><span>Last analysis</span><span id="lastAnalysis">â€”</span></div>
+      </section>
+    </aside>
+  </main>
+  <div class="footer"><span>ParkVision AI â€¢ Local inference dashboard</span><span>API: http://127.0.0.1:8000</span></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+const SAMPLE = "../datasets/pklot/valid/2012-09-11_15_36_32_jpg.rf.b2b1767cafabff6378468d0d71c1ecd2.jpg";
+const $ = id => document.getElementById(id);
+const drop = $("dropzone"), input = $("fileInput"), preview = $("preview"), placeholder = $("placeholder"), imageStage = $("imageStage"), parkingOverlay = $("parkingOverlay");
+let sampleAvailable = false;
+
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3200); }
+function renderParkingOverlay(result){
+  parkingOverlay.innerHTML = "";
+
+  const detections = Array.isArray(result.space_detections)
+    ? result.space_detections
+    : (Array.isArray(result.spaces) ? result.spaces : []);
+
+  if(!detections.length) return;
+
+  const width = Number(
+    result.width || preview.naturalWidth || 1
+  );
+
+  const height = Number(
+    result.height || preview.naturalHeight || 1
+  );
+
+  const occupied = detections.filter(
+    d =>
+      d.status === "occupied" ||
+      d.label === "space-occupied"
+  ).length;
+
+  const empty = detections.length - occupied;
+
+  const summary = document.createElement("div");
+  summary.className = "overlay-summary";
+
+  summary.innerHTML = `
+    <div class="overlay-summary-item red">
+      <i></i>${occupied} OCCUPIED
+    </div>
+    <div class="overlay-summary-item green">
+      <i></i>${empty} AVAILABLE
+    </div>
+  `;
+
+  parkingOverlay.appendChild(summary);
+
+  const detailPanel = document.createElement("div");
+  detailPanel.className = "parking-detail-panel";
+
+  detailPanel.innerHTML = `
+    <div class="parking-detail-header">
+      <div class="parking-detail-title">
+        Parking Space
+      </div>
+
+      <button
+        type="button"
+        class="parking-detail-close"
+        aria-label="Close parking details"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="parking-detail-status">
+      SELECT A SPACE
+    </div>
+
+    <div class="parking-detail-grid">
+      <div class="parking-detail-metric">
+        <span>Space</span>
+        <strong>—</strong>
+      </div>
+
+      <div class="parking-detail-metric">
+        <span>Confidence</span>
+        <strong>—</strong>
+      </div>
+    </div>
+  `;
+
+  parkingOverlay.appendChild(detailPanel);
+
+  const closeButton =
+    detailPanel.querySelector(".parking-detail-close");
+
+  closeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    detailPanel.classList.remove("show");
+
+    parkingOverlay
+      .querySelectorAll(".parking-box.selected")
+      .forEach(box => box.classList.remove("selected"));
+  });
+
+  detections.forEach((d, index) => {
+    if(!Array.isArray(d.box) || d.box.length !== 4){
+      return;
+    }
+
+    const [x1, y1, x2, y2] = d.box;
+
+    const left = Math.max(
+      0,
+      Math.min(100, (x1 / width) * 100)
+    );
+
+    const top = Math.max(
+      0,
+      Math.min(100, (y1 / height) * 100)
+    );
+
+    const boxWidth = Math.max(
+      0,
+      Math.min(
+        100 - left,
+        ((x2 - x1) / width) * 100
+      )
+    );
+
+    const boxHeight = Math.max(
+      0,
+      Math.min(
+        100 - top,
+        ((y2 - y1) / height) * 100
+      )
+    );
+
+    const occupiedStatus =
+      d.status === "occupied" ||
+      d.label === "space-occupied";
+
+    const box = document.createElement("div");
+
+    box.className =
+      "parking-box " +
+      (occupiedStatus ? "occupied" : "empty");
+
+    box.style.left = `${left}%`;
+    box.style.top = `${top}%`;
+    box.style.width = `${boxWidth}%`;
+    box.style.height = `${boxHeight}%`;
+    box.style.animationDelay =
+      `${Math.min(index * 18, 700)}ms`;
+
+    const id =
+      d.id ||
+      `P${String(index + 1).padStart(3, "0")}`;
+
+    const status =
+      occupiedStatus ? "OCCUPIED" : "EMPTY";
+
+    const score = Number(d.score || 0);
+
+    const confidence =
+      score ? `${Math.round(score * 100)}%` : "—";
+
+    box.innerHTML = `
+      <div class="parking-label">
+        <span class="parking-dot"></span>
+        ${id}
+      </div>
+
+      <div class="parking-hover-card">
+        <div class="parking-hover-id">
+          ${id}
+        </div>
+
+        <div class="parking-hover-status">
+          ${status}
+        </div>
+
+        <div class="parking-hover-confidence">
+          Confidence ${confidence}
+        </div>
+      </div>
+    `;
+
+    box.addEventListener("click", (event) => {
+      event.stopPropagation();
+
+      parkingOverlay
+        .querySelectorAll(".parking-box.selected")
+        .forEach(other => {
+          if(other !== box){
+            other.classList.remove("selected");
+          }
+        });
+
+      box.classList.add("selected");
+
+      const statusElement =
+        detailPanel.querySelector(
+          ".parking-detail-status"
+        );
+
+      statusElement.textContent = status;
+      statusElement.className =
+        `parking-detail-status ${
+          occupiedStatus ? "occupied" : "empty"
+        }`;
+
+      const metrics =
+        detailPanel.querySelectorAll(
+          ".parking-detail-metric strong"
+        );
+
+      if(metrics[0]){
+        metrics[0].textContent = id;
+      }
+
+      if(metrics[1]){
+        metrics[1].textContent = confidence;
+      }
+
+      detailPanel.classList.add("show");
+    });
+
+    parkingOverlay.appendChild(box);
+  });
+
+  imageStage.classList.add("show");
+}
+function setStats(r){
+  const total=Number(r.total_spaces||0), occ=Number(r.occupied_spaces||0), avail=Number(r.available_spaces ?? Math.max(total-occ,0));
+  const pct=total ? occ/total*100 : 0;
+  $("occupancy").textContent=pct.toFixed(1)+"%"; $("ringValue").textContent=Math.round(pct)+"%";
+  $("total").textContent=total; $("occupied").textContent=occ; $("available").textContent=avail;
+  $("detections").textContent=r.parking_detections ?? r.vehicles_detected ?? "â€”";
+  $("ring").style.background=`conic-gradient(var(--green) 0deg ${pct*3.6}deg,#18212e ${pct*3.6}deg 360deg)`;
+  $("lastAnalysis").textContent=new Date().toLocaleTimeString();
+  $("activityStatus").textContent="Complete"; $("readyPill").textContent="READY";
+}
+async function health(){
+  try{ const r=await fetch(API+"/health"); if(!r.ok) throw 0; $("backendStatus").textContent="AI READY"; }
+  catch{ $("backendStatus").textContent="BACKEND OFFLINE"; $("readyPill").textContent="OFFLINE"; }
+}
+async function analyze(file){
+  if(!file || !file.type.startsWith("image/")) return toast("Please choose an image file.");
+  $("placeholder").style.display="none"; imageStage.classList.add("show"); preview.classList.add("show"); preview.src=URL.createObjectURL(file); parkingOverlay.innerHTML="";
+  $("fileMeta").textContent=`${file.name} â€¢ ${(file.size/1024/1024).toFixed(2)} MB`; $("fileMeta").classList.add("show");
+  $("analyzing").classList.add("show"); drop.classList.add("scanning"); $("activityStatus").textContent="Analyzingâ€¦"; $("readyPill").textContent="RUNNING";
+  try{
+    const fd=new FormData(); fd.append("file",file);
+    const res=await fetch(API+"/api/analyze",{method:"POST",body:fd});
+    const data=await res.json(); if(!res.ok) throw new Error(data.detail||"Analysis failed");
+    $("resolution").textContent=`${data.width} × ${data.height}`; setStats(data); renderParkingOverlay(data);
+    toast(`Analysis complete: ${data.occupied_spaces} occupied / ${data.available_spaces} available`);
+  }catch(e){ $("activityStatus").textContent="Error"; toast(e.message+" â€” make sure the backend is running."); }
+  finally{$("analyzing").classList.remove("show");drop.classList.remove("scanning");}
+}
+$("chooseBtn").onclick=()=>input.click(); input.onchange=e=>analyze(e.target.files[0]);
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drag")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drag")}));
+drop.addEventListener("drop",e=>analyze(e.dataTransfer.files[0]));
+$("sampleBtn").onclick=async()=>{
+  try{ const res=await fetch(SAMPLE); if(!res.ok) throw 0; const blob=await res.blob(); analyze(new File([blob],"sample-parking.jpg",{type:blob.type||"image/jpeg"})); }
+  catch{ toast("Sample image path is not reachable from this frontend. Use Choose image."); }
+};
+document.querySelectorAll("[data-tilt]").forEach(card=>{
+  card.addEventListener("mousemove",e=>{const r=card.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5; card.style.transform=`perspective(1200px) rotateX(${-y*2.2}deg) rotateY(${x*2.2}deg) translateZ(2px)`});
+  card.addEventListener("mouseleave",()=>card.style.transform="");
+});
+health(); setInterval(health,5000);
+</script>
+</body>
+</html>

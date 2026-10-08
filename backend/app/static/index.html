@@ -1,0 +1,2024 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>ParkVision AI</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<style>
+
+:root {
+    --bg: #05070c;
+    --panel: rgba(13, 18, 29, .72);
+    --panel-strong: rgba(18, 25, 39, .9);
+    --border: rgba(255,255,255,.09);
+
+    --text: #f4f7fb;
+    --muted: #8994a8;
+
+    --green: #35f2a0;
+    --green-soft: rgba(53,242,160,.13);
+
+    --red: #ff5573;
+    --red-soft: rgba(255,85,115,.13);
+
+    --blue: #4da6ff;
+    --purple: #8c6cff;
+
+    --shadow:
+        0 25px 80px rgba(0,0,0,.45);
+
+    --radius: 24px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    background:
+        radial-gradient(
+            circle at 10% 10%,
+            rgba(77,166,255,.10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 90% 20%,
+            rgba(140,108,255,.10),
+            transparent 35%
+        ),
+        var(--bg);
+
+    color: var(--text);
+
+    font-family: Inter, sans-serif;
+
+    overflow-x: hidden;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+#three-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -3;
+    opacity: .75;
+}
+
+.noise {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+
+    opacity: .035;
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+}
+
+.app {
+    width: min(1500px, calc(100% - 40px));
+    margin: auto;
+    padding: 24px 0 50px;
+}
+
+.navbar {
+    height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 20px;
+
+    border: 1px solid var(--border);
+    border-radius: 20px;
+
+    background: rgba(7,10,17,.62);
+    backdrop-filter: blur(24px);
+
+    box-shadow: var(--shadow);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green),
+            var(--blue)
+        );
+
+    color: #06100d;
+
+    font-weight: 900;
+
+    box-shadow:
+        0 0 30px rgba(53,242,160,.25);
+}
+
+.brand-name {
+    font-family: "Space Grotesk";
+    font-weight: 700;
+    font-size: 19px;
+}
+
+.brand-sub {
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 9px 13px;
+
+    border: 1px solid rgba(53,242,160,.2);
+    border-radius: 999px;
+
+    background: var(--green-soft);
+
+    color: var(--green);
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+
+    box-shadow: 0 0 14px var(--green);
+
+    animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+    50% {
+        opacity: .4;
+        transform: scale(.75);
+    }
+}
+
+.hero {
+    padding: 58px 5px 35px;
+}
+
+.eyebrow {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+
+    padding: 8px 12px;
+
+    border-radius: 999px;
+
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+
+    color: #b5c0d1;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+    margin: 0;
+
+    max-width: 850px;
+
+    font-family: "Space Grotesk";
+    font-size: clamp(42px, 6vw, 78px);
+    line-height: .98;
+    letter-spacing: -3px;
+}
+
+.hero h1 span {
+    background:
+        linear-gradient(
+            100deg,
+            #fff,
+            var(--green),
+            var(--blue)
+        );
+
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.hero p {
+    max-width: 680px;
+
+    margin: 20px 0 0;
+
+    color: var(--muted);
+
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.dashboard {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.65fr)
+        minmax(320px, .75fr);
+
+    gap: 18px;
+}
+
+.card {
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(20,27,42,.82),
+            rgba(8,12,20,.75)
+        );
+
+    backdrop-filter: blur(28px);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 20px 22px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+    font-weight: 700;
+}
+
+.card-caption {
+    margin-top: 4px;
+
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.upload {
+    min-height: 560px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.dropzone {
+    position: relative;
+
+    margin: 20px;
+
+    min-height: 470px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px dashed rgba(255,255,255,.16);
+
+    border-radius: 20px;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(53,242,160,.06),
+            transparent 55%
+        );
+
+    transition:
+        .25s ease;
+
+    overflow: hidden;
+}
+
+.dropzone.dragging {
+    border-color: var(--green);
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(53,242,160,.12),
+            transparent 60%
+        );
+
+    transform: scale(.995);
+}
+
+.drop-content {
+    text-align: center;
+    padding: 30px;
+}
+
+.upload-icon {
+    width: 74px;
+    height: 74px;
+
+    display: grid;
+    place-items: center;
+
+    margin: auto auto 22px;
+
+    border-radius: 24px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(53,242,160,.18),
+            rgba(77,166,255,.12)
+        );
+
+    border: 1px solid rgba(53,242,160,.2);
+
+    font-size: 30px;
+
+    box-shadow:
+        0 0 50px rgba(53,242,160,.10);
+}
+
+.drop-content h2 {
+    margin: 0 0 10px;
+
+    font-family: "Space Grotesk";
+    font-size: 25px;
+}
+
+.drop-content p {
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.primary {
+    border: 0;
+
+    padding: 13px 19px;
+
+    border-radius: 13px;
+
+    cursor: pointer;
+
+    color: #04100b;
+
+    font-weight: 800;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green),
+            #8affc8
+        );
+
+    box-shadow:
+        0 12px 35px rgba(53,242,160,.2);
+
+    transition: .2s;
+}
+
+.primary:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 17px 45px rgba(53,242,160,.28);
+}
+
+.file-name {
+    margin-top: 14px;
+
+    color: #c7d0df;
+
+    font-size: 12px;
+}
+
+.preview {
+    position: relative;
+
+    margin: 20px;
+
+    min-height: 470px;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+
+    background: #020409;
+
+    display: none;
+}
+
+.preview img {
+    width: 100%;
+    height: 100%;
+
+    min-height: 470px;
+
+    object-fit: contain;
+
+    display: block;
+}
+
+.preview-hud {
+    position: absolute;
+
+    top: 14px;
+    left: 14px;
+    right: 14px;
+
+    display: flex;
+    justify-content: space-between;
+
+    pointer-events: none;
+}
+
+.hud-pill {
+    padding: 8px 11px;
+
+    border-radius: 10px;
+
+    background: rgba(0,0,0,.58);
+
+    border: 1px solid rgba(255,255,255,.12);
+
+    backdrop-filter: blur(10px);
+
+    font-size: 11px;
+    color: #d9e2ef;
+}
+
+.metrics {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 12px;
+
+    padding: 20px;
+}
+
+.metric {
+    padding: 18px;
+
+    border-radius: 18px;
+
+    background: rgba(255,255,255,.035);
+
+    border: 1px solid var(--border);
+
+    transition: .2s;
+}
+
+.metric:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,.055);
+}
+
+.metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.metric-value {
+    margin-top: 8px;
+
+    font-family: "Space Grotesk";
+
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.metric.green .metric-value {
+    color: var(--green);
+}
+
+.metric.red .metric-value {
+    color: var(--red);
+}
+
+.metric.blue .metric-value {
+    color: var(--blue);
+}
+
+.side {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.occupancy {
+    padding: 25px;
+}
+
+.occupancy-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.occupancy-value {
+    font-family: "Space Grotesk";
+    font-size: 43px;
+    font-weight: 700;
+}
+
+.ring {
+    width: 180px;
+    height: 180px;
+
+    margin: 28px auto;
+
+    position: relative;
+
+    border-radius: 50%;
+
+    display: grid;
+    place-items: center;
+
+    background:
+        conic-gradient(
+            var(--green) var(--percentage, 0%),
+            rgba(255,255,255,.06) 0
+        );
+
+    box-shadow:
+        0 0 55px rgba(53,242,160,.10);
+}
+
+.ring::before {
+    content: "";
+
+    position: absolute;
+
+    width: 140px;
+    height: 140px;
+
+    border-radius: 50%;
+
+    background: #0b1019;
+
+    box-shadow:
+        inset 0 0 30px rgba(0,0,0,.35);
+}
+
+.ring-inner {
+    position: relative;
+    z-index: 2;
+
+    text-align: center;
+}
+
+.ring-number {
+    font-family: "Space Grotesk";
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.ring-label {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.legend .occupied {
+    background: var(--red);
+}
+
+.legend .free {
+    background: var(--green);
+}
+
+.activity {
+    padding: 22px;
+}
+
+.activity-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 13px 0;
+
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.activity-row:last-child {
+    border-bottom: 0;
+}
+
+.activity-icon {
+    width: 34px;
+    height: 34px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 10px;
+
+    background: rgba(255,255,255,.05);
+}
+
+.activity-text {
+    flex: 1;
+}
+
+.activity-text strong {
+    display: block;
+    font-size: 12px;
+}
+
+.activity-text small {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.activity-value {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.parking-panel {
+    margin-top: 18px;
+}
+
+.parking-grid {
+    padding: 20px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(11, minmax(22px, 1fr));
+
+    gap: 7px;
+}
+
+.space {
+    aspect-ratio: 1;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    transition:
+        transform .18s,
+        filter .18s;
+
+    position: relative;
+}
+
+.space:hover {
+    transform: scale(1.18);
+    z-index: 3;
+    filter: brightness(1.3);
+}
+
+.space.free {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(53,242,160,.65),
+            rgba(53,242,160,.15)
+        );
+
+    box-shadow:
+        inset 0 0 10px rgba(53,242,160,.15);
+}
+
+.space.occupied {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,85,115,.72),
+            rgba(255,85,115,.16)
+        );
+}
+
+.empty-state {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 40px;
+}
+
+.footer {
+    margin-top: 20px;
+
+    display: flex;
+    justify-content: space-between;
+
+    color: #667287;
+
+    font-size: 11px;
+}
+
+.loader {
+    position: absolute;
+    inset: 0;
+
+    display: none;
+    place-items: center;
+
+    background: rgba(4,7,12,.78);
+
+    backdrop-filter: blur(12px);
+
+    z-index: 10;
+}
+
+.loader.active {
+    display: grid;
+}
+
+.loader-box {
+    text-align: center;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+
+    border: 3px solid rgba(255,255,255,.08);
+    border-top-color: var(--green);
+
+    border-radius: 50%;
+
+    animation: spin .8s linear infinite;
+
+    margin: auto auto 15px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media(max-width: 1000px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media(max-width: 650px) {
+    .app {
+        width: min(100% - 20px, 1500px);
+        padding-top: 10px;
+    }
+
+    .navbar {
+        height: 62px;
+    }
+
+    .hero {
+        padding-top: 38px;
+    }
+
+    .hero h1 {
+        letter-spacing: -2px;
+    }
+
+    .side {
+        display: flex;
+    }
+
+    .dropzone,
+    .preview {
+        min-height: 360px;
+    }
+
+    .preview img {
+        min-height: 360px;
+    }
+
+    .parking-grid {
+        grid-template-columns:
+            repeat(8, minmax(22px, 1fr));
+    }
+
+    .footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="three-bg"></canvas>
+<div class="noise"></div>
+
+<div class="app">
+
+<header class="navbar">
+
+    <div class="brand">
+
+        <div class="logo">P</div>
+
+        <div>
+            <div class="brand-name">
+                ParkVision AI
+            </div>
+
+            <div class="brand-sub">
+                Intelligent Parking Intelligence
+            </div>
+        </div>
+
+    </div>
+
+    <div class="status">
+        <span class="status-dot"></span>
+        AI SYSTEM ONLINE
+    </div>
+
+</header>
+
+
+<section class="hero">
+
+    <div class="eyebrow">
+        ✦ RT-DETR COMPUTER VISION
+        <span>•</span>
+        REAL-TIME ANALYTICS
+    </div>
+
+    <h1>
+        See every space.<br>
+        <span>Know every space.</span>
+    </h1>
+
+    <p>
+        Upload a parking-lot image and let ParkVision AI
+        transform raw camera footage into actionable
+        occupancy intelligence in seconds.
+    </p>
+
+</section>
+
+
+<main class="dashboard">
+
+<section>
+
+<div class="card upload">
+
+    <div class="card-header">
+
+        <div>
+            <div class="card-title">
+                Parking Scene Analyzer
+            </div>
+
+            <div class="card-caption">
+                AI-powered occupancy detection
+            </div>
+        </div>
+
+        <div class="hud-pill">
+            RT-DETR
+        </div>
+
+    </div>
+
+
+    <div
+        id="dropzone"
+        class="dropzone"
+    >
+
+        <div class="loader" id="loader">
+
+            <div class="loader-box">
+
+                <div class="spinner"></div>
+
+                <strong>
+                    Analyzing parking scene...
+                </strong>
+
+                <div
+                    style="
+                    color:#8994a8;
+                    font-size:11px;
+                    margin-top:7px;
+                    "
+                >
+                    Running RT-DETR inference
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div
+            class="drop-content"
+            id="dropContent"
+        >
+
+            <div class="upload-icon">
+                ↑
+            </div>
+
+            <h2>
+                Drop a parking image
+            </h2>
+
+            <p>
+                Drag & drop an image here or select
+                one from your computer.
+            </p>
+
+            <button
+                class="primary"
+                id="browseBtn"
+            >
+                Analyze Parking Lot
+            </button>
+
+            <input
+                type="file"
+                id="fileInput"
+                accept="image/*"
+                hidden
+            >
+
+            <div
+                class="file-name"
+                id="fileName"
+            >
+                JPG, PNG or WEBP
+            </div>
+
+        </div>
+
+
+        <div
+            class="preview"
+            id="preview"
+        >
+
+            <img id="previewImage">
+
+            <div class="preview-hud">
+
+                <div class="hud-pill">
+                    ● LIVE ANALYSIS
+                </div>
+
+                <div
+                    class="hud-pill"
+                    id="imageResolution"
+                >
+                    —
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card parking-panel">
+
+    <div class="card-header">
+
+        <div>
+            <div class="card-title">
+                Parking Availability Map
+            </div>
+
+            <div class="card-caption">
+                Interactive occupancy overview
+            </div>
+        </div>
+
+        <div
+            class="hud-pill"
+            id="spaceCount"
+        >
+            Waiting for analysis
+        </div>
+
+    </div>
+
+    <div
+        id="parkingGrid"
+        class="parking-grid"
+    >
+
+        <div class="empty-state">
+            Analyze an image to populate the parking map.
+        </div>
+
+    </div>
+
+</div>
+
+</section>
+
+
+<aside class="side">
+
+
+<div class="card occupancy">
+
+    <div class="occupancy-top">
+
+        <div>
+
+            <div class="card-caption">
+                CURRENT OCCUPANCY
+            </div>
+
+            <div
+                class="occupancy-value"
+                id="occupancyText"
+            >
+                0%
+            </div>
+
+        </div>
+
+        <div
+            class="hud-pill"
+            id="modelStatus"
+        >
+            READY
+        </div>
+
+    </div>
+
+
+    <div
+        class="ring"
+        id="occupancyRing"
+        style="--percentage:0%"
+    >
+
+        <div class="ring-inner">
+
+            <div
+                class="ring-number"
+                id="ringNumber"
+            >
+                0%
+            </div>
+
+            <div class="ring-label">
+                OCCUPIED
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="legend">
+
+        <span>
+            <i class="occupied"></i>
+            Occupied
+        </span>
+
+        <span>
+            <i class="free"></i>
+            Available
+        </span>
+
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <div class="metrics">
+
+        <div class="metric">
+            <div class="metric-label">
+                Total Spaces
+            </div>
+
+            <div
+                class="metric-value blue"
+                id="total"
+            >
+                0
+            </div>
+        </div>
+
+        <div class="metric green">
+            <div class="metric-label">
+                Available
+            </div>
+
+            <div
+                class="metric-value"
+                id="available"
+            >
+                0
+            </div>
+        </div>
+
+        <div class="metric red">
+            <div class="metric-label">
+                Occupied
+            </div>
+
+            <div
+                class="metric-value"
+                id="occupied"
+            >
+                0
+            </div>
+        </div>
+
+        <div class="metric">
+            <div class="metric-label">
+                AI Detections
+            </div>
+
+            <div
+                class="metric-value"
+                id="detections"
+            >
+                0
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card activity">
+
+    <div class="card-title">
+        AI Activity
+    </div>
+
+    <div class="card-caption">
+        Latest inference information
+    </div>
+
+
+    <div class="activity-row">
+
+        <div class="activity-icon">
+            ◉
+        </div>
+
+        <div class="activity-text">
+            <strong>Model</strong>
+            <small>Detection engine</small>
+        </div>
+
+        <div
+            class="activity-value"
+            id="activityModel"
+        >
+            RT-DETR
+        </div>
+
+    </div>
+
+
+    <div class="activity-row">
+
+        <div class="activity-icon">
+            ⚡
+        </div>
+
+        <div class="activity-text">
+            <strong>Confidence</strong>
+            <small>Detection pipeline</small>
+        </div>
+
+        <div
+            class="activity-value"
+            id="activityConfidence"
+        >
+            Active
+        </div>
+
+    </div>
+
+
+    <div class="activity-row">
+
+        <div class="activity-icon">
+            ◷
+        </div>
+
+        <div class="activity-text">
+            <strong>Last analysis</strong>
+            <small>System timestamp</small>
+        </div>
+
+        <div
+            class="activity-value"
+            id="lastAnalysis"
+        >
+            —
+        </div>
+
+    </div>
+
+</div>
+
+</aside>
+
+</main>
+
+
+<footer class="footer">
+
+    <span>
+        ParkVision AI · Computer Vision Parking Intelligence
+    </span>
+
+    <span>
+        RT-DETR · FastAPI · CUDA
+    </span>
+
+</footer>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   THREE.JS PREMIUM BACKGROUND
+========================================================= */
+
+const canvas = document.getElementById("three-bg");
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(
+    55,
+    window.innerWidth / window.innerHeight,
+    .1,
+    1000
+);
+
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({
+    canvas,
+    alpha: true,
+    antialias: true
+});
+
+renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+);
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+
+const geometry = new THREE.BufferGeometry();
+
+const count = 900;
+
+const positions = new Float32Array(count * 3);
+
+for (let i = 0; i < count * 3; i += 3) {
+
+    positions[i] =
+        (Math.random() - .5) * 12;
+
+    positions[i + 1] =
+        (Math.random() - .5) * 8;
+
+    positions[i + 2] =
+        (Math.random() - .5) * 7;
+}
+
+geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(
+        positions,
+        3
+    )
+);
+
+const material =
+    new THREE.PointsMaterial({
+        color: 0x35f2a0,
+        size: .018,
+        transparent: true,
+        opacity: .55
+    });
+
+const particles =
+    new THREE.Points(
+        geometry,
+        material
+    );
+
+scene.add(particles);
+
+
+const gridHelper =
+    new THREE.GridHelper(
+        18,
+        30,
+        0x18352d,
+        0x0b1718
+    );
+
+gridHelper.rotation.x = Math.PI / 2.2;
+gridHelper.position.z = -2;
+
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = .13;
+
+scene.add(gridHelper);
+
+
+function animateThree() {
+
+    requestAnimationFrame(
+        animateThree
+    );
+
+    particles.rotation.y += .00035;
+    particles.rotation.x += .00008;
+
+    gridHelper.rotation.z += .00012;
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+animateThree();
+
+
+window.addEventListener(
+    "resize",
+    () => {
+
+        camera.aspect =
+            window.innerWidth /
+            window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+    }
+);
+
+
+/* =========================================================
+   APPLICATION
+========================================================= */
+
+const dropzone =
+    document.getElementById("dropzone");
+
+const fileInput =
+    document.getElementById("fileInput");
+
+const browseBtn =
+    document.getElementById("browseBtn");
+
+const loader =
+    document.getElementById("loader");
+
+const dropContent =
+    document.getElementById("dropContent");
+
+const preview =
+    document.getElementById("preview");
+
+const previewImage =
+    document.getElementById("previewImage");
+
+const fileName =
+    document.getElementById("fileName");
+
+
+browseBtn.addEventListener(
+    "click",
+    () => fileInput.click()
+);
+
+
+fileInput.addEventListener(
+    "change",
+    () => {
+
+        if (fileInput.files.length) {
+
+            analyze(
+                fileInput.files[0]
+            );
+
+        }
+
+    }
+);
+
+
+dropzone.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+
+        dropzone.classList.add(
+            "dragging"
+        );
+
+    }
+);
+
+
+dropzone.addEventListener(
+    "dragleave",
+    () => {
+
+        dropzone.classList.remove(
+            "dragging"
+        );
+
+    }
+);
+
+
+dropzone.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+
+        dropzone.classList.remove(
+            "dragging"
+        );
+
+        const file =
+            event.dataTransfer.files[0];
+
+        if (
+            file &&
+            file.type.startsWith("image/")
+        ) {
+
+            analyze(file);
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   ANALYSIS
+========================================================= */
+
+async function analyze(file) {
+
+    if (!file.type.startsWith("image/")) {
+
+        alert(
+            "Please select an image file."
+        );
+
+        return;
+
+    }
+
+
+    fileName.textContent =
+        file.name;
+
+    loader.classList.add(
+        "active"
+    );
+
+
+    const reader =
+        new FileReader();
+
+
+    reader.onload = event => {
+
+        previewImage.src =
+            event.target.result;
+
+        preview.style.display =
+            "block";
+
+        dropContent.style.display =
+            "none";
+
+    };
+
+
+    reader.readAsDataURL(file);
+
+
+    const form =
+        new FormData();
+
+    form.append(
+        "file",
+        file
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/analyze",
+                {
+                    method: "POST",
+                    body: form
+                }
+            );
+
+
+        if (!response.ok) {
+
+            const error =
+                await response.text();
+
+            throw new Error(
+                error
+            );
+
+        }
+
+
+        const result =
+            await response.json();
+
+
+        updateDashboard(
+            result
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Analysis failed. Check the backend terminal."
+        );
+
+    } finally {
+
+        loader.classList.remove(
+            "active"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
+function updateDashboard(result) {
+
+    const total =
+        Number(
+            result.total_spaces || 0
+        );
+
+    const occupied =
+        Number(
+            result.occupied_spaces || 0
+        );
+
+    const available =
+        Number(
+            result.available_spaces || 0
+        );
+
+    const detections =
+        Number(
+            result.parking_detections ||
+            result.vehicles_detected ||
+            0
+        );
+
+
+    const percentage =
+        total > 0
+            ? (occupied / total) * 100
+            : 0;
+
+
+    animateNumber(
+        "total",
+        total
+    );
+
+    animateNumber(
+        "occupied",
+        occupied
+    );
+
+    animateNumber(
+        "available",
+        available
+    );
+
+    animateNumber(
+        "detections",
+        detections
+    );
+
+
+    animatePercentage(
+        percentage
+    );
+
+
+    document.getElementById(
+        "imageResolution"
+    ).textContent =
+        `${result.width} × ${result.height}`;
+
+
+    document.getElementById(
+        "spaceCount"
+    ).textContent =
+        `${total} SPACES`;
+
+
+    document.getElementById(
+        "lastAnalysis"
+    ).textContent =
+        new Date().toLocaleTimeString();
+
+
+    renderParkingGrid(
+        total,
+        occupied
+    );
+
+}
+
+
+function animateNumber(
+    id,
+    target
+) {
+
+    const element =
+        document.getElementById(id);
+
+    const start =
+        Number(
+            element.textContent
+        ) || 0;
+
+    const duration = 650;
+
+    const started =
+        performance.now();
+
+
+    function tick(now) {
+
+        const progress =
+            Math.min(
+                (now - started) /
+                duration,
+                1
+            );
+
+        const eased =
+            1 -
+            Math.pow(
+                1 - progress,
+                3
+            );
+
+        const value =
+            Math.round(
+                start +
+                (target - start) *
+                eased
+            );
+
+        element.textContent =
+            value;
+
+
+        if (progress < 1) {
+
+            requestAnimationFrame(
+                tick
+            );
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        tick
+    );
+
+}
+
+
+function animatePercentage(
+    target
+) {
+
+    const text =
+        document.getElementById(
+            "occupancyText"
+        );
+
+    const ring =
+        document.getElementById(
+            "occupancyRing"
+        );
+
+    const ringNumber =
+        document.getElementById(
+            "ringNumber"
+        );
+
+
+    const start = 0;
+
+    const duration = 800;
+
+    const started =
+        performance.now();
+
+
+    function tick(now) {
+
+        const progress =
+            Math.min(
+                (now - started) /
+                duration,
+                1
+            );
+
+        const eased =
+            1 -
+            Math.pow(
+                1 - progress,
+                3
+            );
+
+        const value =
+            start +
+            (target - start) *
+            eased;
+
+
+        text.textContent =
+            `${value.toFixed(1)}%`;
+
+        ringNumber.textContent =
+            `${Math.round(value)}%`;
+
+        ring.style
+            .setProperty(
+                "--percentage",
+                `${value}%`
+            );
+
+
+        if (progress < 1) {
+
+            requestAnimationFrame(
+                tick
+            );
+
+        }
+
+    }
+
+
+    requestAnimationFrame(
+        tick
+    );
+
+}
+
+
+/* =========================================================
+   PARKING GRID
+========================================================= */
+
+function renderParkingGrid(
+    total,
+    occupied
+) {
+
+    const grid =
+        document.getElementById(
+            "parkingGrid"
+        );
+
+    grid.innerHTML = "";
+
+
+    for (
+        let i = 0;
+        i < total;
+        i++
+    ) {
+
+        const space =
+            document.createElement(
+                "div"
+            );
+
+
+        const isOccupied =
+            i < occupied;
+
+
+        space.className =
+            `space ${
+                isOccupied
+                    ? "occupied"
+                    : "free"
+            }`;
+
+
+        space.title =
+            `Space ${i + 1}: ${
+                isOccupied
+                    ? "Occupied"
+                    : "Available"
+            }`;
+
+
+        space.addEventListener(
+            "click",
+            () => {
+
+                alert(
+                    `Parking Space ${i + 1}\\n\\nStatus: ${
+                        isOccupied
+                            ? "Occupied"
+                            : "Available"
+                    }`
+                );
+
+            }
+        );
+
+
+        grid.appendChild(
+            space
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   BACKEND STATUS
+========================================================= */
+
+async function checkStatus() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/status"
+            );
+
+        const status =
+            await response.json();
+
+
+        if (status.ready) {
+
+            document.getElementById(
+                "modelStatus"
+            ).textContent =
+                "READY";
+
+        }
+
+    } catch {
+
+        document.getElementById(
+            "modelStatus"
+        ).textContent =
+            "OFFLINE";
+
+    }
+
+}
+
+
+checkStatus();
+
+</script>
+
+</body>
+</html>
