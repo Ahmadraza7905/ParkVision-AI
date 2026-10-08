@@ -1,7 +1,7 @@
 ﻿from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from .calibration import ParkingCalibration
+from backend.app.ai.parking.calibration import ParkingCalibration
 
 
 def main() -> None:
@@ -48,3 +48,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
