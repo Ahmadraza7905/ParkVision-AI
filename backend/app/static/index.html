@@ -451,16 +451,72 @@ input {
     background: #020409;
 
     display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview.visible {
+    display: flex;
+}
+
+.preview-frame {
+    position: relative;
+    width: 100%;
+    line-height: 0;
 }
 
 .preview img {
     width: 100%;
-    height: 100%;
-
-    min-height: 470px;
+    height: auto;
 
     object-fit: contain;
 
+    display: block;
+}
+
+.box-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.box-overlay .space-empty {
+    fill: rgba(53, 242, 160, .16);
+    stroke: var(--green);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.box-overlay .space-occupied {
+    fill: rgba(255, 85, 115, .16);
+    stroke: var(--red);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.box-overlay .space-unknown {
+    fill: rgba(148, 163, 184, .16);
+    stroke: #94a3b8;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.analyze-error {
+    display: none;
+    margin: 0 20px 18px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 85, 115, .28);
+    background: var(--red-soft);
+    color: #ffb3c0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.analyze-error.visible {
     display: block;
 }
 
@@ -475,6 +531,60 @@ input {
     justify-content: space-between;
 
     pointer-events: none;
+    z-index: 2;
+}
+
+.overlay-legend {
+    position: absolute;
+
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    pointer-events: none;
+    z-index: 2;
+}
+
+.overlay-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 8px 11px;
+
+    border-radius: 10px;
+
+    background: rgba(0,0,0,.58);
+
+    border: 1px solid rgba(255,255,255,.12);
+
+    backdrop-filter: blur(10px);
+
+    font-size: 11px;
+    color: #d9e2ef;
+}
+
+.overlay-legend i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+.overlay-legend .legend-empty {
+    background: var(--green);
+}
+
+.overlay-legend .legend-occupied {
+    background: var(--red);
+}
+
+.overlay-legend .legend-unknown {
+    background: #94a3b8;
 }
 
 .hud-pill {
@@ -862,10 +972,6 @@ input {
         min-height: 360px;
     }
 
-    .preview img {
-        min-height: 360px;
-    }
-
     .parking-grid {
         grid-template-columns:
             repeat(8, minmax(22px, 1fr));
@@ -1037,7 +1143,24 @@ input {
             id="preview"
         >
 
-            <img id="previewImage">
+            <div
+                class="preview-frame"
+                id="previewFrame"
+            >
+
+                <img
+                    id="previewImage"
+                    alt="Uploaded parking-lot image"
+                >
+
+                <svg
+                    id="boxOverlay"
+                    class="box-overlay"
+                    xmlns="http://www.w3.org/2000/svg"
+                    preserveAspectRatio="none"
+                ></svg>
+
+            </div>
 
             <div class="preview-hud">
 
@@ -1054,9 +1177,30 @@ input {
 
             </div>
 
+            <div class="overlay-legend">
+                <span>
+                    <i class="legend-empty"></i>
+                    Green = Empty
+                </span>
+                <span>
+                    <i class="legend-occupied"></i>
+                    Red = Occupied
+                </span>
+                <span>
+                    <i class="legend-unknown"></i>
+                    Gray = Unknown
+                </span>
+            </div>
+
         </div>
 
     </div>
+
+    <div
+        class="analyze-error"
+        id="analyzeError"
+        role="alert"
+    ></div>
 
 </div>
 
@@ -1490,6 +1634,15 @@ const previewImage =
 const fileName =
     document.getElementById("fileName");
 
+const boxOverlay =
+    document.getElementById("boxOverlay");
+
+const analyzeError =
+    document.getElementById("analyzeError");
+
+const SVG_NS =
+    "http://www.w3.org/2000/svg";
+
 
 browseBtn.addEventListener(
     "click",
@@ -1552,14 +1705,14 @@ dropzone.addEventListener(
         const file =
             event.dataTransfer.files[0];
 
-        if (
-            file &&
-            file.type.startsWith("image/")
-        ) {
-
-            analyze(file);
-
+        if (!file) {
+            showError(
+                "No file was dropped. Please drop a parking-lot image."
+            );
+            return;
         }
+
+        analyze(file);
 
     }
 );
@@ -1569,18 +1722,339 @@ dropzone.addEventListener(
    ANALYSIS
 ========================================================= */
 
+function showError(message) {
+
+    analyzeError.textContent =
+        message;
+
+    analyzeError.classList.add(
+        "visible"
+    );
+
+}
+
+
+function clearError() {
+
+    analyzeError.textContent = "";
+
+    analyzeError.classList.remove(
+        "visible"
+    );
+
+}
+
+
+function clearOverlay() {
+
+    while (boxOverlay.firstChild) {
+        boxOverlay.removeChild(
+            boxOverlay.firstChild
+        );
+    }
+
+    boxOverlay.removeAttribute("viewBox");
+
+}
+
+
+function getDetections(result) {
+
+    if (Array.isArray(result.space_detections)) {
+        return result.space_detections;
+    }
+
+    if (Array.isArray(result.spaces)) {
+        return result.spaces;
+    }
+
+    return [];
+
+}
+
+
+function getDetectionBox(detection) {
+
+    if (
+        Array.isArray(detection.box) &&
+        detection.box.length === 4
+    ) {
+        const [
+            x1,
+            y1,
+            x2,
+            y2
+        ] = detection.box.map(Number);
+
+        if (
+            [x1, y1, x2, y2].some(
+                value => Number.isNaN(value)
+            )
+        ) {
+            return null;
+        }
+
+        return [x1, y1, x2, y2];
+    }
+
+    if (
+        Array.isArray(detection.bbox) &&
+        detection.bbox.length === 4
+    ) {
+        const [
+            x,
+            y,
+            width,
+            height
+        ] = detection.bbox.map(Number);
+
+        if (
+            [x, y, width, height].some(
+                value => Number.isNaN(value)
+            )
+        ) {
+            return null;
+        }
+
+        return [x, y, x + width, y + height];
+    }
+
+    return null;
+
+}
+
+
+function getSpaceKind(detection) {
+
+    const label = String(
+        detection.label ||
+        detection.class_name ||
+        ""
+    ).toLowerCase();
+
+    const status = String(
+        detection.status ||
+        ""
+    ).toLowerCase();
+
+    if (
+        detection.detected === false ||
+        status === "unknown"
+    ) {
+        return "unknown";
+    }
+
+    if (
+        label === "space-occupied" ||
+        status === "occupied" ||
+        detection.occupied === true
+    ) {
+        return "occupied";
+    }
+
+    if (
+        label === "space-empty" ||
+        status === "empty" ||
+        detection.occupied === false
+    ) {
+        return "empty";
+    }
+
+    return "unknown";
+
+}
+
+
+function overlayClass(kind) {
+
+    if (kind === "occupied") {
+        return "space-occupied";
+    }
+
+    if (kind === "empty") {
+        return "space-empty";
+    }
+
+    return "space-unknown";
+
+}
+
+
+function drawParkingBoxes(result) {
+
+    clearOverlay();
+
+    const width = Number(
+        result.width ||
+        previewImage.naturalWidth ||
+        0
+    );
+
+    const height = Number(
+        result.height ||
+        previewImage.naturalHeight ||
+        0
+    );
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    boxOverlay.setAttribute(
+        "viewBox",
+        `0 0 ${width} ${height}`
+    );
+
+    const detections =
+        getDetections(result);
+
+    const drawable = [];
+
+    detections.forEach(detection => {
+
+        const box =
+            getDetectionBox(detection);
+
+        if (!box) {
+            return;
+        }
+
+        drawable.push({
+            kind: getSpaceKind(detection),
+            box
+        });
+
+    });
+
+    const useDots =
+        drawable.length > 180;
+
+    drawable.forEach(item => {
+
+        const [
+            x1,
+            y1,
+            x2,
+            y2
+        ] = item.box;
+
+        const left = Math.min(x1, x2);
+        const top = Math.min(y1, y2);
+        const boxWidth = Math.abs(x2 - x1);
+        const boxHeight = Math.abs(y2 - y1);
+        const className = overlayClass(item.kind);
+
+        if (useDots) {
+
+            const marker =
+                document.createElementNS(
+                    SVG_NS,
+                    "circle"
+                );
+
+            marker.setAttribute(
+                "cx",
+                left + boxWidth / 2
+            );
+
+            marker.setAttribute(
+                "cy",
+                top + boxHeight / 2
+            );
+
+            marker.setAttribute(
+                "r",
+                Math.max(
+                    4,
+                    Math.min(boxWidth, boxHeight) * 0.18
+                )
+            );
+
+            marker.setAttribute(
+                "class",
+                className
+            );
+
+            boxOverlay.appendChild(
+                marker
+            );
+
+            return;
+
+        }
+
+        const rect =
+            document.createElementNS(
+                SVG_NS,
+                "rect"
+            );
+
+        rect.setAttribute("x", left);
+        rect.setAttribute("y", top);
+        rect.setAttribute("width", boxWidth);
+        rect.setAttribute("height", boxHeight);
+        rect.setAttribute("class", className);
+        rect.setAttribute("rx", "4");
+
+        boxOverlay.appendChild(
+            rect
+        );
+
+    });
+
+}
+
+
+async function readApiError(response) {
+
+    try {
+
+        const data =
+            await response.json();
+
+        if (typeof data.detail === "string") {
+            return data.detail;
+        }
+
+        if (Array.isArray(data.detail)) {
+            return data.detail
+                .map(item => item.msg || JSON.stringify(item))
+                .join(" ");
+        }
+
+        if (data.detail) {
+            return String(data.detail);
+        }
+
+        return `Analysis failed (${response.status}).`;
+
+    } catch {
+
+        return `Analysis failed (${response.status}).`;
+
+    }
+
+}
+
+
 async function analyze(file) {
 
-    if (!file.type.startsWith("image/")) {
+    if (
+        !file.type ||
+        !file.type.startsWith("image/")
+    ) {
 
-        alert(
-            "Please select an image file."
+        showError(
+            "Please select a valid image file (JPG, PNG, or WEBP)."
         );
 
         return;
 
     }
 
+
+    clearError();
+    clearOverlay();
 
     fileName.textContent =
         file.name;
@@ -1594,13 +2068,26 @@ async function analyze(file) {
         new FileReader();
 
 
+    reader.onerror = () => {
+
+        showError(
+            "Could not read that image. Please try another file."
+        );
+
+    };
+
+
     reader.onload = event => {
 
         previewImage.src =
             event.target.result;
 
+        preview.classList.add(
+            "visible"
+        );
+
         preview.style.display =
-            "block";
+            "flex";
 
         dropContent.style.display =
             "none";
@@ -1634,11 +2121,10 @@ async function analyze(file) {
 
         if (!response.ok) {
 
-            const error =
-                await response.text();
-
             throw new Error(
-                error
+                await readApiError(
+                    response
+                )
             );
 
         }
@@ -1652,13 +2138,21 @@ async function analyze(file) {
             result
         );
 
+        drawParkingBoxes(
+            result
+        );
+
 
     } catch (error) {
 
         console.error(error);
 
-        alert(
-            "Analysis failed. Check the backend terminal."
+        clearOverlay();
+
+        showError(
+            error && error.message
+                ? error.message
+                : "Analysis failed. Check that the backend is running."
         );
 
     } finally {
@@ -1736,7 +2230,9 @@ function updateDashboard(result) {
     document.getElementById(
         "imageResolution"
     ).textContent =
-        `${result.width} × ${result.height}`;
+        result.width && result.height
+            ? `${result.width} × ${result.height}`
+            : "—";
 
 
     document.getElementById(
